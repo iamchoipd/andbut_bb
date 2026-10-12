@@ -1,0 +1,1410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>이어주는 말 경주</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  -webkit-tap-highlight-color:transparent;
+}
+
+:root{
+  --blue:#2775ff;
+  --dark:#233044;
+  --bg:#f2f6fb;
+}
+
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo",Arial,sans-serif;
+  background:var(--bg);
+  color:var(--dark);
+}
+
+button,select{font:inherit}
+
+/* =========================
+   설정 화면
+========================= */
+#setupScreen{
+  width:100%;
+  height:100vh;
+  height:100dvh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  overflow-y:auto;
+}
+
+.setup-box{
+  width:min(620px,100%);
+  background:#fff;
+  border-radius:26px;
+  padding:26px 30px;
+  box-shadow:0 14px 40px rgba(0,0,0,.12);
+}
+
+.title{
+  margin:0 0 8px;
+  text-align:center;
+  font-size:clamp(30px,5vw,50px);
+  font-weight:900;
+}
+
+.subtitle{
+  text-align:center;
+  color:#647084;
+  font-size:18px;
+  line-height:1.5;
+  margin-bottom:22px;
+}
+
+.setting-group{margin:16px 0}
+
+.setting-group label{
+  display:block;
+  font-size:18px;
+  font-weight:900;
+  margin-bottom:7px;
+}
+
+.setting-group select{
+  width:100%;
+  padding:14px;
+  border:2px solid #dce3ed;
+  border-radius:14px;
+  background:#fff;
+  font-size:19px;
+  font-weight:800;
+}
+
+.rule-box{
+  background:#f4f8ff;
+  border-radius:17px;
+  padding:15px 18px;
+  line-height:1.75;
+  font-size:14px;
+  margin-top:20px;
+}
+
+.rule-box strong{color:var(--blue)}
+
+.setup-buttons{
+  display:flex;
+  gap:10px;
+  margin-top:20px;
+}
+
+#startBtn,#setupFullscreenBtn{
+  border:0;
+  border-radius:17px;
+  padding:17px;
+  font-size:21px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+#startBtn{
+  flex:2;
+  background:var(--blue);
+  color:#fff;
+}
+
+#setupFullscreenBtn{
+  flex:1;
+  background:#e9eef6;
+  color:#314052;
+}
+
+/* =========================
+   게임 전체
+========================= */
+#gameScreen{
+  display:none;
+  width:100%;
+  height:100vh;
+  height:100dvh;
+  min-height:0;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* =========================
+   상단 경주판
+========================= */
+#raceArea{
+  flex:0 0 auto;
+  background:#fff;
+  border-bottom:2px solid #dbe2eb;
+  box-shadow:0 4px 12px rgba(0,0,0,.07);
+  padding:max(5px,env(safe-area-inset-top)) 10px 6px;
+  z-index:10;
+}
+
+.race-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:3px;
+}
+
+.race-title{
+  font-size:clamp(17px,2vw,22px);
+  font-weight:900;
+}
+
+.race-controls{
+  display:flex;
+  gap:5px;
+}
+
+.small-btn{
+  border:1px solid #bac4d1;
+  background:#edf2f8;
+  color:#344054;
+  border-radius:9px;
+  padding:6px 10px;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+#tracks{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+
+.track-row{
+  display:grid;
+  grid-template-columns:42px 1fr 54px;
+  align-items:center;
+  gap:4px;
+  min-height:27px;
+}
+
+.track-name{
+  text-align:center;
+  font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.track{
+  position:relative;
+  height:22px;
+  border:1px solid #d9e0e9;
+  border-radius:11px;
+  background:repeating-linear-gradient(
+    90deg,
+    #f0f3f8 0,
+    #f0f3f8 9%,
+    #e3e8f0 9%,
+    #e3e8f0 10%
+  );
+}
+
+.runner{
+  position:absolute;
+  left:0;
+  top:50%;
+  transform:translate(-5%,-50%);
+  font-size:20px;
+  transition:left .6s cubic-bezier(.22,.8,.28,1.2),transform .25s;
+  z-index:2;
+}
+
+.runner.jump{
+  transform:translate(-5%,-78%) scale(1.15);
+}
+
+.runner.returning{
+  transition:left 1.1s cubic-bezier(.7,0,.3,1);
+}
+
+.finish-flag{
+  position:absolute;
+  right:-3px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:17px;
+}
+
+.track-time{
+  text-align:center;
+  font-size:11px;
+  font-weight:900;
+  font-variant-numeric:tabular-nums;
+}
+
+/* =========================
+   하단 문제 영역
+========================= */
+#playersScroller{
+  flex:1 1 auto;
+  min-height:0;
+  width:100%;
+  padding:8px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+}
+
+#playersArea{
+  width:100%;
+  height:100%;
+  min-height:0;
+  display:flex;
+  align-items:stretch;
+  gap:8px;
+}
+
+/* 중요: calc 안에서 곱셈/나눗셈 사용하지 않음 */
+#playersArea.count-1 .player-card{flex:0 0 100%}
+#playersArea.count-2 .player-card{flex:0 0 calc((100% - 8px)/2)}
+#playersArea.count-3 .player-card{flex:0 0 calc((100% - 16px)/3)}
+#playersArea.count-4 .player-card{flex:0 0 calc((100% - 24px)/4)}
+#playersArea.count-5 .player-card{flex:0 0 calc((100% - 32px)/5)}
+
+.player-card{
+  min-width:0;
+  height:100%;
+  min-height:0;
+  position:relative;
+  background:#fff;
+  border-radius:18px;
+  border:3px solid transparent;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  scroll-snap-align:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.07);
+}
+
+.player-card.correct-flash{animation:correctFlash .55s ease}
+.player-card.wrong-flash{animation:wrongFlash .55s ease}
+
+@keyframes correctFlash{
+  30%{border-color:#2ac67d;background:#eafff4}
+}
+
+@keyframes wrongFlash{
+  30%{border-color:#ff6767;background:#fff0f0}
+}
+
+.player-top{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:5px;
+  margin-bottom:5px;
+}
+
+.player-label{
+  font-size:clamp(16px,1.8vw,23px);
+  font-weight:900;
+}
+
+.player-progress{
+  color:var(--blue);
+  font-size:clamp(12px,1.2vw,16px);
+  font-weight:900;
+}
+
+.question-box{
+  flex:1 1 auto;
+  min-height:0;
+  background:#f7f9fc;
+  border-radius:15px;
+  padding:8px;
+  margin-bottom:4px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.question{
+  width:100%;
+  text-align:center;
+  font-size:clamp(16px,1.85vw,27px);
+  font-weight:800;
+  line-height:1.48;
+  word-break:keep-all;
+}
+
+.blank{
+  display:inline-block;
+  padding:1px 9px 3px;
+  margin:3px;
+  border-radius:8px;
+  background:#fff1b9;
+  color:#805c00;
+  font-weight:900;
+}
+
+.status{
+  flex:0 0 auto;
+  min-height:21px;
+  margin:1px 0 3px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-size:clamp(11px,1vw,14px);
+  font-weight:900;
+}
+
+.answers{
+  flex:0 0 auto;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.answer-btn{
+  width:100%;
+  height:42px;
+  min-height:42px;
+  flex:0 0 auto;
+  border:0;
+  border-radius:12px;
+  background:#eaf1ff;
+  color:#165ed1;
+  font-size:clamp(18px,1.9vw,27px);
+  font-weight:900;
+  cursor:pointer;
+  touch-action:manipulation;
+  user-select:none;
+}
+
+.answer-btn:nth-child(2){
+  background:#fff1e4;
+  color:#bc6018;
+}
+
+.answer-btn:nth-child(3){
+  background:#e7f8ef;
+  color:#087848;
+}
+
+.answer-btn:active:not(:disabled){transform:scale(.98)}
+.answer-btn:disabled{opacity:.38}
+.answer-btn.removed{display:none}
+
+.penalty-overlay{
+  position:absolute;
+  inset:0;
+  z-index:20;
+  display:none;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:12px;
+  background:rgba(25,33,47,.88);
+  color:#fff;
+}
+
+.penalty-overlay.show{display:flex}
+
+.penalty-icon{
+  font-size:clamp(35px,5vw,58px);
+}
+
+.penalty-text{
+  margin:7px;
+  font-size:clamp(18px,2.3vw,32px);
+  font-weight:900;
+}
+
+.penalty-count{
+  color:#ffd84d;
+  font-size:clamp(40px,6vw,60px);
+  font-weight:900;
+}
+
+.finish-message{
+  text-align:center;
+  font-size:clamp(20px,2.5vw,36px);
+  font-weight:900;
+  line-height:1.4;
+}
+
+.finish-time-big{
+  margin-top:8px;
+  color:#176ada;
+  font-size:clamp(26px,4vw,50px);
+  font-weight:900;
+}
+
+/* =========================
+   카운트다운
+========================= */
+#countdownOverlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  align-items:center;
+  justify-content:center;
+  background:rgba(17,25,38,.88);
+  color:#fff;
+}
+
+#countdownOverlay.show{display:flex}
+
+#countdownText{
+  font-size:clamp(90px,25vw,220px);
+  font-weight:1000;
+}
+
+.countdown-start{color:#ffe44f}
+
+/* =========================
+   결과
+========================= */
+#resultOverlay{
+  position:fixed;
+  inset:0;
+  z-index:1500;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(13,20,32,.85);
+}
+
+#resultOverlay.show{display:flex}
+
+.result-box{
+  width:min(550px,100%);
+  max-height:90vh;
+  max-height:90dvh;
+  overflow-y:auto;
+  background:#fff;
+  border-radius:27px;
+  padding:27px;
+  text-align:center;
+}
+
+.result-title{
+  margin-bottom:18px;
+  font-size:35px;
+  font-weight:1000;
+}
+
+.result-row{
+  display:flex;
+  justify-content:space-between;
+  margin:8px 0;
+  padding:13px 15px;
+  border-radius:13px;
+  background:#f4f7fb;
+  font-weight:900;
+}
+
+.result-actions{
+  display:flex;
+  gap:9px;
+  margin-top:20px;
+}
+
+.result-actions button{
+  flex:1;
+  padding:15px;
+  border:0;
+  border-radius:14px;
+  font-weight:900;
+}
+
+#againBtn{background:var(--blue);color:#fff}
+#setupBtn{background:#e8edf4}
+
+/* 낮은 화면 */
+@media (max-height:850px){
+  .race-header{margin-bottom:2px}
+  .track-row{min-height:24px}
+  .track{height:19px}
+  .runner{font-size:18px}
+  .finish-flag{font-size:15px}
+  #playersScroller{padding:6px}
+  .player-card{padding:8px}
+  .question{line-height:1.4}
+  .answer-btn{height:40px;min-height:40px}
+}
+
+/* 모바일 */
+@media (max-width:800px){
+  #setupScreen{padding:10px}
+  .setup-box{padding:20px 16px}
+  .setup-buttons{flex-direction:column}
+  #setupFullscreenBtn{width:100%}
+
+  .race-title{font-size:16px}
+  .small-btn{padding:6px 7px;font-size:11px}
+  .track-row{grid-template-columns:36px 1fr 48px;gap:2px;min-height:22px}
+  .track-name{font-size:11px}
+  .track{height:18px}
+  .runner{font-size:17px}
+  .track-time{font-size:10px}
+
+  #playersScroller{padding:7px}
+  #playersArea{gap:7px}
+
+  /* 모바일은 한 사람씩 크게 좌우 스와이프 */
+  #playersArea.count-2 .player-card,
+  #playersArea.count-3 .player-card,
+  #playersArea.count-4 .player-card,
+  #playersArea.count-5 .player-card{
+    flex:0 0 92vw;
+  }
+
+  #playersArea.count-1 .player-card{
+    flex:0 0 calc(100vw - 14px);
+  }
+
+  .player-label{font-size:18px}
+  .question{font-size:clamp(18px,5vw,27px)}
+  .status{font-size:12px}
+  .answer-btn{
+    height:48px;
+    min-height:48px;
+    font-size:clamp(20px,5vw,26px);
+  }
+}
+
+@media (max-height:650px){
+  .track-row{min-height:19px}
+  .track{height:16px}
+  .runner{font-size:15px}
+  .finish-flag{font-size:12px}
+  .question{font-size:16px;line-height:1.32}
+  .status{min-height:18px}
+  .answer-btn{height:36px;min-height:36px;font-size:17px}
+}
+</style>
+</head>
+
+<body>
+
+<div id="setupScreen">
+  <div class="setup-box">
+    <h1 class="title">🏃 이어주는 말 경주</h1>
+
+    <div class="subtitle">
+      그리고 · 그러나 · 그래서<br>
+      문장을 잘 읽고 결승점까지 달려 보세요!
+    </div>
+
+    <div class="setting-group">
+      <label for="playerCount">👥 참가 인원</label>
+      <select id="playerCount">
+        <option value="1" selected>1명</option>
+        <option value="2">2명</option>
+        <option value="3">3명</option>
+        <option value="4">4명</option>
+        <option value="5">5명</option>
+      </select>
+    </div>
+
+    <div class="setting-group">
+      <label for="goalCount">🏁 문제 수</label>
+      <select id="goalCount">
+        <option value="5" selected>5문제</option>
+        <option value="10">10문제</option>
+        <option value="15">15문제</option>
+        <option value="20">20문제</option>
+      </select>
+    </div>
+
+    <div class="rule-box">
+      📖 문제를 <strong>3초 동안 읽어요.</strong><br>
+      ❌ 첫 번째 오답은 <strong>틀린 보기가 사라지고 3초 정지!</strong><br>
+      🚨 같은 문제를 두 번 틀리면 <strong>출발점으로 돌아가요.</strong><br>
+      🏆 결승점에 도착하면 <strong>도착 시간을 기록해요.</strong><br>
+      📚 문제는 <strong>120문제</strong>가 준비되어 있어요.
+    </div>
+
+    <div class="setup-buttons">
+      <button id="startBtn">게임 시작</button>
+      <button id="setupFullscreenBtn">⛶ 전체화면</button>
+    </div>
+  </div>
+</div>
+
+<div id="gameScreen">
+  <div id="raceArea">
+    <div class="race-header">
+      <div class="race-title">🏃 이어주는 말 경주</div>
+
+      <div class="race-controls">
+        <button class="small-btn" id="gameFullscreenBtn">⛶ 전체화면</button>
+        <button class="small-btn" id="quitBtn">처음으로</button>
+      </div>
+    </div>
+
+    <div id="tracks"></div>
+  </div>
+
+  <div id="playersScroller">
+    <div id="playersArea"></div>
+  </div>
+</div>
+
+<div id="countdownOverlay">
+  <div id="countdownText">3</div>
+</div>
+
+<div id="resultOverlay">
+  <div class="result-box">
+    <div class="result-title">🏆 모두 도착!</div>
+    <div id="resultList"></div>
+
+    <div class="result-actions">
+      <button id="againBtn">다시 하기</button>
+      <button id="setupBtn">설정 바꾸기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  /* 그리고 40 */
+  ["나는 사과를 먹었습니다.","바나나도 먹었습니다.","그리고"],
+  ["나는 우유를 마셨습니다.","물도 마셨습니다.","그리고"],
+  ["민수는 축구를 했습니다.","농구도 했습니다.","그리고"],
+  ["지수는 책을 읽었습니다.","만화책도 읽었습니다.","그리고"],
+  ["나는 국어 숙제를 했습니다.","수학 숙제도 했습니다.","그리고"],
+  ["동생은 사과를 먹었습니다.","딸기도 먹었습니다.","그리고"],
+  ["우리는 노래를 불렀습니다.","춤도 추었습니다.","그리고"],
+  ["나는 연필을 샀습니다.","지우개도 샀습니다.","그리고"],
+  ["수아는 그림을 그렸습니다.","색칠도 했습니다.","그리고"],
+  ["아빠는 방을 청소하셨습니다.","거실도 청소하셨습니다.","그리고"],
+  ["나는 손을 씻었습니다.","얼굴도 씻었습니다.","그리고"],
+  ["민지는 피아노를 쳤습니다.","노래도 불렀습니다.","그리고"],
+  ["우리는 운동장을 달렸습니다.","줄넘기도 했습니다.","그리고"],
+  ["나는 김밥을 먹었습니다.","떡볶이도 먹었습니다.","그리고"],
+  ["준호는 책가방을 챙겼습니다.","필통도 챙겼습니다.","그리고"],
+  ["엄마는 사과를 사셨습니다.","배도 사셨습니다.","그리고"],
+  ["나는 친구에게 인사했습니다.","선생님께도 인사했습니다.","그리고"],
+  ["우리는 꽃을 보았습니다.","나무도 보았습니다.","그리고"],
+  ["동생은 장난감을 정리했습니다.","책도 정리했습니다.","그리고"],
+  ["나는 색종이를 접었습니다.","그림도 그렸습니다.","그리고"],
+  ["지우는 우유를 마셨습니다.","주스도 마셨습니다.","그리고"],
+  ["우리는 자전거를 탔습니다.","그네도 탔습니다.","그리고"],
+  ["나는 모자를 썼습니다.","장갑도 꼈습니다.","그리고"],
+  ["수지는 일기를 썼습니다.","독서록도 썼습니다.","그리고"],
+  ["아빠는 설거지를 하셨습니다.","쓰레기도 버리셨습니다.","그리고"],
+  ["우리는 상추를 심었습니다.","토마토도 심었습니다.","그리고"],
+  ["나는 강아지를 보았습니다.","고양이도 보았습니다.","그리고"],
+  ["친구는 축구공을 가져왔습니다.","농구공도 가져왔습니다.","그리고"],
+  ["나는 책상을 닦았습니다.","의자도 닦았습니다.","그리고"],
+  ["우리는 사진을 찍었습니다.","영상도 찍었습니다.","그리고"],
+  ["동생은 양말을 신었습니다.","신발도 신었습니다.","그리고"],
+  ["나는 밥을 먹었습니다.","국도 먹었습니다.","그리고"],
+  ["민지는 연필을 깎았습니다.","색연필도 깎았습니다.","그리고"],
+  ["우리는 노래를 들었습니다.","동화도 들었습니다.","그리고"],
+  ["나는 공책을 샀습니다.","색종이도 샀습니다.","그리고"],
+  ["선생님은 글을 쓰셨습니다.","그림도 그리셨습니다.","그리고"],
+  ["나는 운동화를 신었습니다.","모자도 썼습니다.","그리고"],
+  ["친구는 과자를 가져왔습니다.","사탕도 가져왔습니다.","그리고"],
+  ["우리는 박물관을 구경했습니다.","사진도 찍었습니다.","그리고"],
+  ["나는 방을 정리했습니다.","책상도 정리했습니다.","그리고"],
+
+  /* 그러나 40 */
+  ["비가 많이 왔습니다.","나는 우산이 없었습니다.","그러나"],
+  ["날씨가 매우 추웠습니다.","민수는 반팔을 입었습니다.","그러나"],
+  ["나는 열심히 공부했습니다.","시험을 잘 보지 못했습니다.","그러나"],
+  ["수아는 많이 뛰었습니다.","하나도 힘들지 않았습니다.","그러나"],
+  ["밖은 아주 밝았습니다.","방 안은 어두웠습니다.","그러나"],
+  ["가방은 매우 무거웠습니다.","지수는 혼자 들었습니다.","그러나"],
+  ["동생은 몸집이 작았습니다.","힘은 아주 셌습니다.","그러나"],
+  ["문제가 아주 어려웠습니다.","민수는 혼자 풀었습니다.","그러나"],
+  ["책은 아주 두꺼웠습니다.","나는 금방 다 읽었습니다.","그러나"],
+  ["나는 일찍 집에서 나왔습니다.","학교에 늦었습니다.","그러나"],
+  ["비가 올 것 같았습니다.","비가 오지 않았습니다.","그러나"],
+  ["운동장은 젖어 있었습니다.","아이들은 운동장에서 놀았습니다.","그러나"],
+  ["나는 많이 피곤했습니다.","끝까지 숙제를 했습니다.","그러나"],
+  ["눈이 많이 왔습니다.","학교는 쉬지 않았습니다.","그러나"],
+  ["수영장 물이 깊었습니다.","지수는 무서워하지 않았습니다.","그러나"],
+  ["나는 우산을 가져갔습니다.","비가 오지 않았습니다.","그러나"],
+  ["신발은 아주 예뻤습니다.","내 발에는 너무 작았습니다.","그러나"],
+  ["음식은 아주 매웠습니다.","동생은 잘 먹었습니다.","그러나"],
+  ["길이 아주 멀었습니다.","우리는 끝까지 걸었습니다.","그러나"],
+  ["날씨가 더웠습니다.","민수는 긴팔 옷을 입었습니다.","그러나"],
+  ["나는 달리기 연습을 많이 했습니다.","경기에서 졌습니다.","그러나"],
+  ["공은 아주 작았습니다.","무게는 아주 무거웠습니다.","그러나"],
+  ["강아지는 몸집이 컸습니다.","아주 겁이 많았습니다.","그러나"],
+  ["시험 문제가 많았습니다.","민지는 빨리 다 풀었습니다.","그러나"],
+  ["나는 일찍 잠자리에 들었습니다.","아침에 늦게 일어났습니다.","그러나"],
+  ["바람이 세게 불었습니다.","나뭇잎은 움직이지 않았습니다.","그러나"],
+  ["동생은 잠이 온다고 했습니다.","잠을 자지 않았습니다.","그러나"],
+  ["수박은 아주 컸습니다.","생각보다 가벼웠습니다.","그러나"],
+  ["방은 아주 작았습니다.","물건은 많이 들어 있었습니다.","그러나"],
+  ["나는 길을 잘 안다고 생각했습니다.","길을 잃었습니다.","그러나"],
+  ["꽃은 아주 작았습니다.","향기는 아주 강했습니다.","그러나"],
+  ["아침에는 아주 추웠습니다.","낮에는 아주 따뜻했습니다.","그러나"],
+  ["나는 문제를 다 풀었다고 생각했습니다.","한 문제가 남아 있었습니다.","그러나"],
+  ["친구는 약속 시간보다 일찍 나왔습니다.","나보다 늦게 도착했습니다.","그러나"],
+  ["종이는 매우 얇았습니다.","쉽게 찢어지지 않았습니다.","그러나"],
+  ["영화는 아주 길었습니다.","나는 지루하지 않았습니다.","그러나"],
+  ["나는 발표 전에 많이 떨었습니다.","발표는 잘 끝냈습니다.","그러나"],
+  ["버스가 곧 올 줄 알았습니다.","한참 기다렸습니다.","그러나"],
+  ["운동화가 새것이었습니다.","신어 보니 발이 아팠습니다.","그러나"],
+  ["하늘에는 구름이 많았습니다.","비는 내리지 않았습니다.","그러나"],
+
+  /* 그래서 40 */
+  ["배가 고팠습니다.","밥을 먹었습니다.","그래서"],
+  ["목이 말랐습니다.","물을 마셨습니다.","그래서"],
+  ["비가 왔습니다.","우산을 썼습니다.","그래서"],
+  ["날씨가 추웠습니다.","두꺼운 옷을 입었습니다.","그래서"],
+  ["날씨가 더웠습니다.","창문을 열었습니다.","그래서"],
+  ["방이 어두웠습니다.","불을 켰습니다.","그래서"],
+  ["손이 더러웠습니다.","손을 씻었습니다.","그래서"],
+  ["연필심이 부러졌습니다.","연필을 깎았습니다.","그래서"],
+  ["신발 끈이 풀렸습니다.","신발 끈을 묶었습니다.","그래서"],
+  ["책이 재미있었습니다.","끝까지 읽었습니다.","그래서"],
+  ["밤늦게 잠을 잤습니다.","아침에 늦게 일어났습니다.","그래서"],
+  ["비가 많이 왔습니다.","운동장에 물이 고였습니다.","그래서"],
+  ["눈이 많이 왔습니다.","길에 눈이 쌓였습니다.","그래서"],
+  ["많이 뛰었습니다.","땀이 났습니다.","그래서"],
+  ["배가 아팠습니다.","보건실에 갔습니다.","그래서"],
+  ["친구가 넘어졌습니다.","친구를 일으켜 주었습니다.","그래서"],
+  ["우유를 쏟았습니다.","걸레로 닦았습니다.","그래서"],
+  ["숙제를 다 했습니다.","밖에 나가 놀았습니다.","그래서"],
+  ["햇빛이 눈부셨습니다.","모자를 썼습니다.","그래서"],
+  ["비밀번호를 잊었습니다.","선생님께 물어보았습니다.","그래서"],
+  ["길을 몰랐습니다.","지도를 보았습니다.","그래서"],
+  ["버스를 놓쳤습니다.","다음 버스를 기다렸습니다.","그래서"],
+  ["화분의 흙이 말랐습니다.","물을 주었습니다.","그래서"],
+  ["교실이 더웠습니다.","에어컨을 켰습니다.","그래서"],
+  ["시험 문제가 어려웠습니다.","천천히 다시 읽었습니다.","그래서"],
+  ["종이가 찢어졌습니다.","새 종이를 꺼냈습니다.","그래서"],
+  ["물이 바닥에 쏟아졌습니다.","바닥을 닦았습니다.","그래서"],
+  ["친구의 목소리가 작았습니다.","더 크게 말해 달라고 했습니다.","그래서"],
+  ["신호등이 빨간불이었습니다.","멈춰서 기다렸습니다.","그래서"],
+  ["비가 올 것 같았습니다.","우산을 챙겼습니다.","그래서"],
+  ["시험을 열심히 준비했습니다.","문제를 잘 풀었습니다.","그래서"],
+  ["아침에 늦게 일어났습니다.","학교에 뛰어갔습니다.","그래서"],
+  ["배터리가 없었습니다.","충전기를 꽂았습니다.","그래서"],
+  ["공이 멀리 굴러갔습니다.","공을 가지러 갔습니다.","그래서"],
+  ["창문이 열려 있었습니다.","찬바람이 들어왔습니다.","그래서"],
+  ["친구의 생일이었습니다.","생일 카드를 만들었습니다.","그래서"],
+  ["운동화가 젖었습니다.","운동화를 말렸습니다.","그래서"],
+  ["책을 빌리고 싶었습니다.","도서관에 갔습니다.","그래서"],
+  ["연필을 잃어버렸습니다.","새 연필을 꺼냈습니다.","그래서"],
+  ["알람이 울렸습니다.","잠에서 깼습니다.","그래서"]
+];
+
+const CHARACTERS=["🐰","🐶","🐱","🐼","🦊"];
+const ANSWERS=["그리고","그러나","그래서"];
+
+let playerCount=1;
+let goalCount=5;
+let players=[];
+let gameStartTime=0;
+let timerInterval=null;
+let audioContext=null;
+
+function isFullscreen(){
+  return !!(document.fullscreenElement||document.webkitFullscreenElement);
+}
+
+async function enterFullscreen(){
+  const el=document.documentElement;
+  try{
+    if(el.requestFullscreen) await el.requestFullscreen();
+    else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  }catch(e){
+    console.log("전체화면을 사용할 수 없습니다.",e);
+  }
+}
+
+async function exitFullscreen(){
+  try{
+    if(document.exitFullscreen) await document.exitFullscreen();
+    else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }catch(e){
+    console.log("전체화면 종료 오류",e);
+  }
+}
+
+async function toggleFullscreen(){
+  if(isFullscreen()) await exitFullscreen();
+  else await enterFullscreen();
+}
+
+function updateFullscreenButtons(){
+  const text=isFullscreen()?"⛶ 전체화면 종료":"⛶ 전체화면";
+  document.getElementById("setupFullscreenBtn").textContent=text;
+  document.getElementById("gameFullscreenBtn").textContent=text;
+}
+
+document.getElementById("setupFullscreenBtn").addEventListener("click",toggleFullscreen);
+document.getElementById("gameFullscreenBtn").addEventListener("click",toggleFullscreen);
+document.addEventListener("fullscreenchange",updateFullscreenButtons);
+document.addEventListener("webkitfullscreenchange",updateFullscreenButtons);
+
+function getAudioContext(){
+  if(!audioContext){
+    audioContext=new (window.AudioContext||window.webkitAudioContext)();
+  }
+  return audioContext;
+}
+
+function tone(frequency,duration=.15,type="sine",volume=.18,delay=0){
+  const ctx=getAudioContext();
+  const osc=ctx.createOscillator();
+  const gain=ctx.createGain();
+
+  osc.type=type;
+  osc.frequency.value=frequency;
+
+  gain.gain.setValueAtTime(.0001,ctx.currentTime+delay);
+  gain.gain.exponentialRampToValueAtTime(volume,ctx.currentTime+delay+.015);
+  gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+delay+duration);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(ctx.currentTime+delay);
+  osc.stop(ctx.currentTime+delay+duration+.03);
+}
+
+function playCountdownSound(n){
+  const f={3:440,2:500,1:580};
+  tone(f[n],.16);
+}
+
+function playStartSound(){
+  tone(660,.13,"sine",.18,0);
+  tone(880,.16,"sine",.18,.11);
+  tone(1100,.25,"sine",.2,.23);
+}
+
+function playWrongSound(){
+  tone(230,.15,"square",.07);
+  tone(180,.2,"square",.06,.13);
+}
+
+function playReturnSound(){
+  const ctx=getAudioContext();
+  const osc=ctx.createOscillator();
+  const gain=ctx.createGain();
+
+  osc.type="sawtooth";
+  osc.frequency.setValueAtTime(650,ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(110,ctx.currentTime+.8);
+
+  gain.gain.setValueAtTime(.1,ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+.85);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start();
+  osc.stop(ctx.currentTime+.9);
+}
+
+function playFinishSound(){
+  tone(523,.16,"sine",.15);
+  tone(659,.16,"sine",.15,.13);
+  tone(784,.16,"sine",.17,.26);
+  tone(1047,.4,"sine",.2,.39);
+}
+
+function shuffle(array){
+  const result=[...array];
+  for(let i=result.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [result[i],result[j]]=[result[j],result[i]];
+  }
+  return result;
+}
+
+function sleep(ms){
+  return new Promise(resolve=>setTimeout(resolve,ms));
+}
+
+function formatTime(ms){
+  const totalTenths=Math.floor(ms/100);
+  const minutes=Math.floor(totalTenths/600);
+  const seconds=Math.floor((totalTenths%600)/10);
+  const tenths=totalTenths%10;
+
+  return `${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}.${tenths}`;
+}
+
+document.getElementById("startBtn").addEventListener("click",startGame);
+
+async function startGame(){
+  playerCount=Number(document.getElementById("playerCount").value);
+  goalCount=Number(document.getElementById("goalCount").value);
+
+  const ctx=getAudioContext();
+  if(ctx.state==="suspended") await ctx.resume();
+
+  buildGame();
+
+  document.getElementById("setupScreen").style.display="none";
+  document.getElementById("gameScreen").style.display="flex";
+
+  await startCountdown();
+  beginRace();
+}
+
+function buildGame(){
+  clearInterval(timerInterval);
+
+  document.getElementById("resultOverlay").classList.remove("show");
+
+  const tracks=document.getElementById("tracks");
+  const playersArea=document.getElementById("playersArea");
+
+  tracks.innerHTML="";
+  playersArea.innerHTML="";
+  playersArea.className=`count-${playerCount}`;
+
+  players=[];
+
+  for(let i=0;i<playerCount;i++){
+    const order=shuffle(
+      Array.from({length:QUESTIONS.length},(_,index)=>index)
+    );
+
+    const player={
+      id:i,
+      name:`${i+1}번`,
+      character:CHARACTERS[i],
+      position:0,
+      wrongCount:0,
+      questionIndex:null,
+      questionOrder:order,
+      questionCursor:0,
+      locked:true,
+      finished:false,
+      finishTime:null
+    };
+
+    players.push(player);
+    createTrack(player);
+    createPlayerCard(player);
+  }
+}
+
+function createTrack(player){
+  const row=document.createElement("div");
+  row.className="track-row";
+
+  row.innerHTML=`
+    <div class="track-name">${player.name}</div>
+    <div class="track">
+      <div class="runner" id="runner-${player.id}">${player.character}</div>
+      <div class="finish-flag">🏁</div>
+    </div>
+    <div class="track-time" id="track-time-${player.id}">00:00.0</div>
+  `;
+
+  document.getElementById("tracks").appendChild(row);
+}
+
+function createPlayerCard(player){
+  const card=document.createElement("div");
+  card.className="player-card";
+  card.id=`player-card-${player.id}`;
+
+  card.innerHTML=`
+    <div class="player-top">
+      <div class="player-label">${player.character} ${player.name}</div>
+      <div class="player-progress" id="progress-${player.id}">0 / ${goalCount}</div>
+    </div>
+
+    <div class="question-box">
+      <div class="question" id="question-${player.id}">곧 시작합니다!</div>
+    </div>
+
+    <div class="status" id="status-${player.id}">준비하세요!</div>
+
+    <div class="answers" id="answers-${player.id}">
+      ${ANSWERS.map(answer=>`
+        <button
+          class="answer-btn"
+          disabled
+          data-player="${player.id}"
+          data-answer="${answer}">
+          ${answer}
+        </button>
+      `).join("")}
+    </div>
+
+    <div class="penalty-overlay" id="penalty-${player.id}">
+      <div class="penalty-icon" id="penalty-icon-${player.id}">⏳</div>
+      <div class="penalty-text" id="penalty-text-${player.id}"></div>
+      <div class="penalty-count" id="penalty-count-${player.id}">3</div>
+    </div>
+  `;
+
+  document.getElementById("playersArea").appendChild(card);
+
+  card.querySelectorAll(".answer-btn").forEach(button=>{
+    button.addEventListener("click",()=>{
+      answerQuestion(
+        Number(button.dataset.player),
+        button.dataset.answer,
+        button
+      );
+    });
+  });
+}
+
+async function startCountdown(){
+  const overlay=document.getElementById("countdownOverlay");
+  const text=document.getElementById("countdownText");
+
+  overlay.classList.add("show");
+
+  for(let n=3;n>=1;n--){
+    text.textContent=n;
+    playCountdownSound(n);
+    await sleep(1000);
+  }
+
+  text.textContent="시작!";
+  text.classList.add("countdown-start");
+  playStartSound();
+
+  await sleep(700);
+
+  overlay.classList.remove("show");
+  text.classList.remove("countdown-start");
+}
+
+function beginRace(){
+  gameStartTime=performance.now();
+
+  players.forEach(player=>loadNewQuestion(player));
+
+  timerInterval=setInterval(updateTimers,100);
+}
+
+function updateTimers(){
+  const now=performance.now();
+
+  players.forEach(player=>{
+    const elapsed=player.finished
+      ? player.finishTime
+      : now-gameStartTime;
+
+    document.getElementById(`track-time-${player.id}`).textContent=
+      formatTime(elapsed);
+  });
+}
+
+function getNextQuestion(player){
+  if(player.questionCursor>=player.questionOrder.length){
+    player.questionOrder=shuffle(
+      Array.from({length:QUESTIONS.length},(_,index)=>index)
+    );
+    player.questionCursor=0;
+  }
+
+  const index=player.questionOrder[player.questionCursor];
+  player.questionCursor++;
+  return index;
+}
+
+function loadNewQuestion(player){
+  if(player.finished) return;
+
+  player.questionIndex=getNextQuestion(player);
+  player.wrongCount=0;
+
+  resetAnswerButtons(player);
+
+  const q=QUESTIONS[player.questionIndex];
+
+  document.getElementById(`question-${player.id}`).innerHTML=`
+    <div>${q[0]}</div>
+    <div>
+      <span class="blank">______</span>
+      ${q[1]}
+    </div>
+  `;
+
+  startReadingLock(player);
+}
+
+function resetAnswerButtons(player){
+  document
+    .getElementById(`answers-${player.id}`)
+    .querySelectorAll(".answer-btn")
+    .forEach(button=>{
+      button.classList.remove("removed");
+      button.disabled=true;
+    });
+}
+
+async function startReadingLock(player){
+  player.locked=true;
+  setButtonsEnabled(player,false);
+
+  const status=document.getElementById(`status-${player.id}`);
+
+  for(let n=3;n>=1;n--){
+    if(player.finished) return;
+
+    status.textContent=`📖 문장을 읽어요 · ${n}`;
+    await sleep(1000);
+  }
+
+  if(player.finished) return;
+
+  player.locked=false;
+  setButtonsEnabled(player,true);
+
+  status.textContent="👉 알맞은 말을 선택하세요!";
+}
+
+function setButtonsEnabled(player,enabled){
+  document
+    .getElementById(`answers-${player.id}`)
+    .querySelectorAll(".answer-btn")
+    .forEach(button=>{
+      if(!button.classList.contains("removed")){
+        button.disabled=!enabled;
+      }
+    });
+}
+
+function answerQuestion(playerId,selectedAnswer,clickedButton){
+  const player=players[playerId];
+
+  if(!player||player.locked||player.finished) return;
+
+  player.locked=true;
+  setButtonsEnabled(player,false);
+
+  const correctAnswer=QUESTIONS[player.questionIndex][2];
+
+  if(selectedAnswer===correctAnswer){
+    handleCorrect(player);
+  }else{
+    handleWrong(player,clickedButton);
+  }
+}
+
+async function handleCorrect(player){
+  const card=document.getElementById(`player-card-${player.id}`);
+
+  card.classList.remove("wrong-flash");
+  void card.offsetWidth;
+  card.classList.add("correct-flash");
+
+  player.position++;
+
+  updateProgress(player);
+  moveRunner(player,true);
+
+  document.getElementById(`status-${player.id}`).textContent=
+    "⭕ 맞았어요! 앞으로!";
+
+  if(player.position>=goalCount){
+    await sleep(500);
+    finishPlayer(player);
+    return;
+  }
+
+  await sleep(600);
+  loadNewQuestion(player);
+}
+
+async function handleWrong(player,clickedButton){
+  player.wrongCount++;
+
+  const card=document.getElementById(`player-card-${player.id}`);
+
+  card.classList.remove("wrong-flash");
+  void card.offsetWidth;
+  card.classList.add("wrong-flash");
+
+  if(player.wrongCount===1){
+    playWrongSound();
+
+    clickedButton.classList.add("removed");
+
+    await showPenalty(
+      player,
+      "🤔",
+      "틀린 보기가 사라졌어요!"
+    );
+
+    player.locked=false;
+    setButtonsEnabled(player,true);
+
+    document.getElementById(`status-${player.id}`).textContent=
+      "남은 두 개 중에서 골라 보세요!";
+
+    return;
+  }
+
+  playReturnSound();
+
+  player.position=0;
+
+  updateProgress(player);
+  moveRunner(player,false,true);
+
+  await showPenalty(
+    player,
+    "🚨",
+    "출발점으로 돌아가요!"
+  );
+
+  loadNewQuestion(player);
+}
+
+async function showPenalty(player,icon,text){
+  const overlay=document.getElementById(`penalty-${player.id}`);
+  const count=document.getElementById(`penalty-count-${player.id}`);
+
+  document.getElementById(`penalty-icon-${player.id}`).textContent=icon;
+  document.getElementById(`penalty-text-${player.id}`).textContent=text;
+
+  overlay.classList.add("show");
+
+  for(let n=3;n>=1;n--){
+    count.textContent=n;
+    await sleep(1000);
+  }
+
+  overlay.classList.remove("show");
+}
+
+function updateProgress(player){
+  document.getElementById(`progress-${player.id}`).textContent=
+    `${player.position} / ${goalCount}`;
+}
+
+function moveRunner(player,jump=false,returning=false){
+  const runner=document.getElementById(`runner-${player.id}`);
+  if(!runner) return;
+
+  const percentage=Math.min(
+    100,
+    (player.position/goalCount)*100
+  );
+
+  if(returning){
+    runner.classList.add("returning");
+  }else{
+    runner.classList.remove("returning");
+  }
+
+  runner.style.left=`${percentage*.94}%`;
+
+  if(jump){
+    runner.classList.add("jump");
+    setTimeout(()=>{
+      runner.classList.remove("jump");
+    },350);
+  }
+
+  if(returning){
+    setTimeout(()=>{
+      runner.classList.remove("returning");
+    },1200);
+  }
+}
+
+function finishPlayer(player){
+  if(player.finished) return;
+
+  player.finished=true;
+  player.locked=true;
+  player.finishTime=performance.now()-gameStartTime;
+
+  setButtonsEnabled(player,false);
+  moveRunner(player,true);
+  playFinishSound();
+
+  const card=document.getElementById(`player-card-${player.id}`);
+
+  card.querySelector(".question-box").innerHTML=`
+    <div class="finish-message">
+      🎉 결승점 도착!
+      <div class="finish-time-big">
+        ${formatTime(player.finishTime)}
+      </div>
+    </div>
+  `;
+
+  document.getElementById(`status-${player.id}`).textContent=
+    "🏆 잘했어요!";
+
+  if(players.every(p=>p.finished)){
+    clearInterval(timerInterval);
+    setTimeout(showFinalResult,900);
+  }
+}
+
+function showFinalResult(){
+  const sorted=[...players].sort(
+    (a,b)=>a.finishTime-b.finishTime
+  );
+
+  document.getElementById("resultList").innerHTML=
+    sorted.map(player=>`
+      <div class="result-row">
+        <span>${player.character} ${player.name}</span>
+        <span>${formatTime(player.finishTime)}</span>
+      </div>
+    `).join("");
+
+  document.getElementById("resultOverlay").classList.add("show");
+}
+
+document.getElementById("againBtn").addEventListener("click",async()=>{
+  buildGame();
+  document.getElementById("resultOverlay").classList.remove("show");
+
+  await startCountdown();
+  beginRace();
+});
+
+function backToSetup(){
+  clearInterval(timerInterval);
+
+  document.getElementById("resultOverlay").classList.remove("show");
+  document.getElementById("gameScreen").style.display="none";
+  document.getElementById("setupScreen").style.display="flex";
+}
+
+document.getElementById("setupBtn").addEventListener("click",backToSetup);
+
+document.getElementById("quitBtn").addEventListener("click",()=>{
+  if(confirm("게임을 끝내고 처음으로 돌아갈까요?")){
+    backToSetup();
+  }
+});
+
+window.addEventListener("resize",()=>{
+  players.forEach(player=>{
+    moveRunner(player,false);
+  });
+});
+</script>
+
+</body>
+</html>
