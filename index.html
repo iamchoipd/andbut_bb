@@ -284,11 +284,13 @@ button,select{font:inherit}
   border-radius:18px;
   border:3px solid transparent;
   padding:10px;
+  padding-bottom:155px;
   display:flex;
   flex-direction:column;
   overflow:hidden;
   scroll-snap-align:center;
   box-shadow:0 4px 14px rgba(0,0,0,.07);
+  --answers-top:70%;
 }
 
 .player-card.correct-flash{animation:correctFlash .55s ease}
@@ -355,28 +357,36 @@ button,select{font:inherit}
 }
 
 .status{
-  flex:0 0 auto;
-  min-height:21px;
-  margin:1px 0 3px;
+  position:absolute;
+  left:10px;
+  right:10px;
+  top:calc(var(--answers-top) - 30px);
+  height:25px;
+  margin:0;
   display:flex;
   align-items:center;
   justify-content:center;
   text-align:center;
   font-size:clamp(11px,1vw,14px);
   font-weight:900;
+  z-index:4;
 }
 
 .answers{
-  flex:0 0 auto;
+  position:absolute;
+  left:10px;
+  right:10px;
+  top:var(--answers-top);
   display:flex;
   flex-direction:column;
-  gap:4px;
+  gap:6px;
+  z-index:5;
 }
 
 .answer-btn{
   width:100%;
-  height:42px;
-  min-height:42px;
+  height:46px;
+  min-height:46px;
   flex:0 0 auto;
   border:0;
   border-radius:12px;
@@ -385,8 +395,11 @@ button,select{font:inherit}
   font-size:clamp(18px,1.9vw,27px);
   font-weight:900;
   cursor:pointer;
-  touch-action:manipulation;
+  touch-action:none;
   user-select:none;
+  -webkit-user-select:none;
+  -webkit-touch-callout:none;
+  pointer-events:auto;
 }
 
 .answer-btn:nth-child(2){
@@ -542,7 +555,7 @@ button,select{font:inherit}
   #playersScroller{padding:6px}
   .player-card{padding:8px}
   .question{line-height:1.4}
-  .answer-btn{height:40px;min-height:40px}
+  .answer-btn{height:44px;min-height:44px}
 }
 
 /* 모바일 */
@@ -592,7 +605,7 @@ button,select{font:inherit}
   .finish-flag{font-size:12px}
   .question{font-size:16px;line-height:1.32}
   .status{min-height:18px}
-  .answer-btn{height:36px;min-height:36px;font-size:17px}
+  .answer-btn{height:42px;min-height:42px;font-size:17px}
 }
 </style>
 </head>
@@ -961,6 +974,11 @@ async function startGame(){
   document.getElementById("setupScreen").style.display="none";
   document.getElementById("gameScreen").style.display="flex";
 
+  requestAnimationFrame(()=>{
+    positionAnswerArea();
+    setTimeout(positionAnswerArea, 80);
+  });
+
   await startCountdown();
   beginRace();
 }
@@ -1059,13 +1077,59 @@ function createPlayerCard(player){
   document.getElementById("playersArea").appendChild(card);
 
   card.querySelectorAll(".answer-btn").forEach(button=>{
-    button.addEventListener("click",()=>{
+    const activate = (event) => {
+      if(event){
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
       answerQuestion(
         Number(button.dataset.player),
         button.dataset.answer,
         button
       );
+    };
+
+    /* 전자칠판에서는 손가락이 닿는 즉시 반응 */
+    if(window.PointerEvent){
+      button.addEventListener("pointerdown", activate, {passive:false});
+    }else{
+      button.addEventListener("touchstart", activate, {passive:false});
+      button.addEventListener("click", activate);
+    }
+
+    /* 키보드 사용도 유지 */
+    button.addEventListener("keydown", (event)=>{
+      if(event.key === "Enter" || event.key === " "){
+        activate(event);
+      }
     });
+  });
+
+  requestAnimationFrame(positionAnswerArea);
+}
+
+/* =====================================================
+   보기 위치: 화면 위에서 75% 지점
+===================================================== */
+function positionAnswerArea(){
+  const targetY = window.innerHeight * 0.75;
+
+  document.querySelectorAll(".player-card").forEach(card=>{
+    const rect = card.getBoundingClientRect();
+    const answers = card.querySelector(".answers");
+
+    if(!answers) return;
+
+    const answerHeight = answers.offsetHeight || 150;
+    const desiredLocalTop = targetY - rect.top;
+
+    /* 화면 아래로 빠지지 않도록 안전 범위 안에서 고정 */
+    const minTop = Math.max(130, rect.height * 0.52);
+    const maxTop = Math.max(minTop, rect.height - answerHeight - 8);
+    const localTop = Math.min(maxTop, Math.max(minTop, desiredLocalTop));
+
+    card.style.setProperty("--answers-top", `${localTop}px`);
   });
 }
 
@@ -1403,6 +1467,15 @@ window.addEventListener("resize",()=>{
   players.forEach(player=>{
     moveRunner(player,false);
   });
+  positionAnswerArea();
+});
+
+document.addEventListener("fullscreenchange",()=>{
+  setTimeout(positionAnswerArea, 60);
+});
+
+document.addEventListener("webkitfullscreenchange",()=>{
+  setTimeout(positionAnswerArea, 60);
 });
 </script>
 
